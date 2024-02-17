@@ -5,7 +5,6 @@ import pandas as pd
 from pandas_datareader.fred import FredReader
 import requests
 
-
 start_date = "1990-01-01"
 
 def get_eurtwd_data():
