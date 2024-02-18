@@ -116,6 +116,27 @@ def get_eu_inflation_data():    #EU uses harmonised CPI to measure inflation
     hicp_data.set_index('DATE', inplace=True)
     return hicp_data
 
+def get_eu_unenployment_data():    #EU uses harmonised CPI to measure inflation
+    # Greece's short code here should be GR
+    ez['Greece'] = 'GR'
+    ez['Ireland'] = 'IE'
+    ez['Eurozone'] = 'EZ'
+    
+    hur_data_list = []
+    
+    for country, shortname in ez.items():
+        hur_ticker = f"LRHUTTTT{shortname}M156S"
+        hurdata = FredReader(hur_ticker, start=start_date).read()
+        hurdata.rename(columns={hur_ticker:'Unemployment'}, inplace=True)
+        hurdata['Country'] = country
+        hurdata.reset_index(inplace=True)
+        hur_data_list.append(hurdata)
+    
+    hur_data = pd.concat(hur_data_list, axis=0)
+    hur_data.set_index('DATE', inplace=True)
+    return hur_data
+
+
 if __name__ == "__main__":
     
     print("Ready to get the data ...")
@@ -144,15 +165,24 @@ if __name__ == "__main__":
     print("Getting CPI data ...")
     ez_hicp_data = get_eu_inflation_data()
     print("Data Get!")
+    
+    print("Getting Unemployment data ...")
+    ez_hur_data = get_eu_unenployment_data()
+    print("Data get!")
 
-    gdp_hicp_data = ez_gdp_data.merge(ez_hicp_data, how="outer", on=["DATE", "Country"])
-    gdp_hicp_data.set_index("DATE", inplace=True)
+    macro_data = ez_gdp_data.merge(ez_hicp_data, 
+                                    how="outer", 
+                                    on=["DATE", "Country"])
+    macro_data = macro_data.merge(ez_hur_data, 
+                                    how="outer", 
+                                    on=["DATE", "Country"])
+    macro_data.set_index("DATE", inplace=True)
     
     print("Exporting Data ...")
     
     # Export Excel
     with pd.ExcelWriter("euros_data.xlsx") as writer:
         currency_rate_data.to_excel(writer, sheet_name="Euros and Rates")
-        gdp_hicp_data.to_excel(writer, sheet_name="EZ GDP and HICP")
+        macro_data.to_excel(writer, sheet_name="EZ Macro Data")
         
     print("Data Exported!")
