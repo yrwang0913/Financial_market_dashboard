@@ -16,7 +16,7 @@ eu_countries = EUROPEAN_UNION.names
 to_exclude = [
     "Bulgaria", "Czechia", "Cyprus", "Denmark", "Estonia", "Hungary", 
     "Latvia", "Lithuania", "Malta", "Poland", "Slovakia", "Slovenia",
-    "Sweden", "Croatia", "Ireland" # Ireland for name code reason, we will include its data separately
+    "Sweden", "Romania", "Croatia", "Ireland" # Ireland for name code reason, we will include its data separately
     ]
 
 for country in to_exclude:
