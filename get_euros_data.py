@@ -66,37 +66,37 @@ def get_10YY_data():
 def get_ez_gdp_data():
     #Greece's EU shortcode is EL, not GR
     ez["Greece"] = "EL"
+    ez["Eurozone"] = "EA19"
 
     gdp_data_list = []
     
+    # Nominal GDP (DE) = "CPMNACSCAB1GQ(DE)"
+    # Real GDP (DE) = "CLVMNACSCAB1GQ(DE)"
+    # Real GDP (EZ) = "CLVMNACSCAB1GQ(EA19)"
+
     for country, shortname in ez.items():
-        gdpticker = f"CPMNACSCAB1GQ{shortname}" 
+        gdpticker = f"CLVMNACSCAB1GQ{shortname}" 
         gdpdata = FredReader(gdpticker, start=start_date).read()
-        gdpdata.rename(columns={gdpticker:'GDP'}, inplace=True)
+        gdpdata.rename(columns={gdpticker:'Real GDP'}, inplace=True)
         gdpdata['Country'] = country
+        gdpdata['Real GDP YoY Rate'] = gdpdata['Real GDP'].pct_change(4) * 100
         gdpdata.reset_index(inplace=True)
         gdp_data_list.append(gdpdata)
     
-    # Ireland and EZ have different codes, so we'll get them separately
-    irgdp = "CPMNACSAB1GQIE"
+    # Ireland have different codes, so we'll get it separately
+    irgdp = "CLVMNACSAB1GQIE"
     ir_gdp_data = FredReader(irgdp, start=start_date).read()
-    ir_gdp_data.rename(columns={irgdp:'GDP'}, inplace=True)
+    ir_gdp_data.rename(columns={irgdp:'Real GDP'}, inplace=True)
     ir_gdp_data['Country'] = 'Ireland'
+    ir_gdp_data['Real GDP YoY Rate'] = ir_gdp_data['Real GDP'].pct_change(4) * 100
     ir_gdp_data.reset_index(inplace=True)
     gdp_data_list.append(ir_gdp_data)
-    
-    ezgdp = "EUNNGDP"
-    ez_gdp_data = FredReader(ezgdp, start=start_date).read()
-    ez_gdp_data.rename(columns={ezgdp:'GDP'}, inplace=True)
-    ez_gdp_data['Country'] = 'Eurozone'
-    ez_gdp_data.reset_index(inplace=True)
-    gdp_data_list.append(ez_gdp_data)
     
     gdp_data = pd.concat(gdp_data_list, axis=0)
     gdp_data.set_index('DATE')
     return gdp_data
     
-def get_eu_inflation_data():    #EU uses harmonised CPI to measure inflation
+def get_eu_inflation_data():
     # Greece's short code here should be GR
     ez['Greece'] = 'GR'
     ez['Ireland'] = 'IE'
@@ -109,6 +109,7 @@ def get_eu_inflation_data():    #EU uses harmonised CPI to measure inflation
         hicpdata = FredReader(hicpticker, start=start_date).read()
         hicpdata.rename(columns={hicpticker:'HICP'}, inplace=True)
         hicpdata['Country'] = country
+        hicpdata['Real HICP YoY Rate'] = hicpdata['HICP'].pct_change(12) * 100
         hicpdata.reset_index(inplace=True)
         hicp_data_list.append(hicpdata)
     
@@ -116,7 +117,7 @@ def get_eu_inflation_data():    #EU uses harmonised CPI to measure inflation
     hicp_data.set_index('DATE', inplace=True)
     return hicp_data
 
-def get_eu_unenployment_data():    #EU uses harmonised CPI to measure inflation
+def get_eu_unenployment_data():
     # Greece's short code here should be GR
     ez['Greece'] = 'GR'
     ez['Ireland'] = 'IE'
@@ -136,6 +137,29 @@ def get_eu_unenployment_data():    #EU uses harmonised CPI to measure inflation
     hur_data.set_index('DATE', inplace=True)
     return hur_data
 
+def get_conf_indicators_data():
+    ci_categories = {
+        "CI_All": "CSCICP02EZM460S",
+        "CI_Manufacture": "BSCICP02EZM460S",
+        "CI_Service": "BVCICP02EZM460S",
+        "CI_Construction": "BCCICP02EZM460S",
+        "CI_Retail_Trade": "EA19BRCICP02STSAM"
+    }
+
+    ci_data_list = []
+
+    for cat, code in ci_categories.items():
+        data = FredReader(code, start=start_date).read()
+        data.rename(columns={code: cat}, inplace=True)
+        data["Country"] = "Eurozone"
+        data.reset_index(inplace=True)
+        ci_data_list.append(data)
+
+    ci_data = ci_data_list[0]
+    for df in ci_data_list[1:]:
+        ci_data = ci_data.merge(df, on=["DATE", "Country"], how="outer")
+        
+    return ci_data
 
 if __name__ == "__main__":
     
@@ -169,6 +193,10 @@ if __name__ == "__main__":
     print("Getting Unemployment data ...")
     ez_hur_data = get_eu_unenployment_data()
     print("Data get!")
+    
+    print("Getting Confidence Indicator data ...")
+    ez_ci_data = get_conf_indicators_data()
+    print("Data get!")
 
     macro_data = ez_gdp_data.merge(ez_hicp_data, 
                                     how="outer", 
@@ -176,6 +204,9 @@ if __name__ == "__main__":
     macro_data = macro_data.merge(ez_hur_data, 
                                     how="outer", 
                                     on=["DATE", "Country"])
+    macro_data = macro_data.merge(ez_ci_data, 
+                                how="outer", 
+                                on=["DATE", "Country"])
     macro_data.set_index("DATE", inplace=True)
     
     print("Exporting Data ...")
