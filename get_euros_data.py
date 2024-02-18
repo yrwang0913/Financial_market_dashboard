@@ -99,21 +99,12 @@ def get_ez_gdp_data():
 def get_eu_inflation_data():    #EU uses harmonised CPI to measure inflation
     # Greece's short code here should be GR
     ez['Greece'] = 'GR'
-    del ez['Romania']
+    ez['Ireland'] = 'IE'
+    ez['Eurozone'] = 'EZ19'
     
     hicp_data_list = []
     
     for country, shortname in ez.items():
-        hicpticker = f"CPHPTT01{shortname}M659N"
-        hicpdata = FredReader(hicpticker, start=start_date).read()
-        hicpdata.rename(columns={hicpticker:'HICP'}, inplace=True)
-        hicpdata['Country'] = country
-        hicpdata.reset_index(inplace=True)
-        hicp_data_list.append(hicpdata)
-    
-    # Ireland, Romania and EZ have different codes, so we'll get them separately
-    ir_ro_ez = {"Ireland": "IE", "Romania": "RO", "Eurozone": "EZ19"}
-    for country, shortname in ir_ro_ez.items():
         hicpticker = f"CP0000{shortname}M086NEST"
         hicpdata = FredReader(hicpticker, start=start_date).read()
         hicpdata.rename(columns={hicpticker:'HICP'}, inplace=True)
