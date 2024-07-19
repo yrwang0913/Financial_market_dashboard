@@ -1,3 +1,4 @@
+altair
 countrygroups==0.13.0
 datetime
 numpy
@@ -7,3 +8,4 @@ pandas_datareader
 pycountry
 requests
 streamlit
+plotly
