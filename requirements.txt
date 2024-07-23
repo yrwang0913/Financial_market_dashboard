@@ -9,3 +9,4 @@ pycountry
 requests
 streamlit
 plotly
+yfinance
