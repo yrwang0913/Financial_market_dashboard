@@ -284,7 +284,6 @@ def calculate_portfolio_value_and_return(investment, current_prices):
     return_rate = round(((portfolio_current_value - initial_value) / initial_value * 100), 2)
     return [portfolio_current_value, return_rate]
 
-
 ## Metrics
 sp500 = get_sp500_data()
 twdeur = get_eurtwd_data()
