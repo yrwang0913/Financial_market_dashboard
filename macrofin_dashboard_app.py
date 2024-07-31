@@ -16,7 +16,7 @@ recession_periods = [
     ("2020-04-01", "2020-06-01") # Covid Recession
 ]
 
-## Macroeconomics
+## Macroeconomics Data
 def chart_recession_periods(fig, recession_periods):
     for start_date, end_date in recession_periods:
         fig.add_vrect(x0=start_date, x1=end_date, fillcolor='grey', opacity=0.5, line_width=0)
@@ -62,7 +62,7 @@ def get_ccc_data():
 def get_vix_data():
     return yf.download('^VIX', start=start_date)['Adj Close']
 
-## Financial Market
+## Financial Market Data
 def get_eurtwd_data():
     finmind_url = "https://api.finmindtrade.com/api/v4/data"
     params = {
@@ -261,17 +261,48 @@ def display_commodities_chart_mac():
         st.plotly_chart(com_fig)
 
 ### Financial Market Page
+## Investment Portfolio
+
+# Current prices of portfolio invested
+def get_current_prices(investment):
+    current_prices = {}
+    for asset in investment['asset'].unique():
+        ticker = yf.Ticker(asset)
+        current_prices[asset] = ticker.history(period='1d')['Close'][0]
+    
+    return current_prices
+
+# Get the portfolio value and return
+def calculate_portfolio_value_and_return(investment, current_prices):
+    investment['current_value'] = investment.apply(
+        lambda row: row['amount_invested'] * (current_prices[row['asset']] / row['price_at_investment']), axis=1
+    )
+    portfolio_value = investment.groupby('date')['current_value'].sum().reset_index()
+    portfolio_current_value = round(portfolio_value['current_value'].sum(), 2)
+
+    initial_value = investment['amount_invested'].sum()
+    return_rate = round(((portfolio_current_value - initial_value) / initial_value * 100), 2)
+    return [portfolio_current_value, return_rate]
+
+
 ## Metrics
 sp500 = get_sp500_data()
 twdeur = get_eurtwd_data()
 usdeur = get_eurusd_data()
 
 def display_main_figures_fin():
-    fin1, fin2, fin3, fin4 = st.columns(4)
+    # Get investment portfolio value & return
+    investment = pd.read_excel('Investment.xlsx', sheet_name='Investment', parse_dates=['date'])
+    current_prices = get_current_prices(investment=investment)
+    portfolio_value_and_return = calculate_portfolio_value_and_return(investment=investment, current_prices=current_prices)
+    
+    fin1, fin2, fin3, fin4, fin5, fin6 = st.columns(6)
     fin1.metric(label='Date: ', value=end_date)
-    fin2.metric(label='S&P 500', value=round(sp500['S&P 500'][-1], 2), delta=f"{sp500['Diff (%)'][-1]}"+"%")
-    fin3.metric(label='USD / EUR', value=usdeur['USDEUR'][-1], delta=f"{usdeur['Diff (%)'][-1]}"+"%")
-    fin4.metric(label='TWD / EUR', value=twdeur['TWDEUR'][-1], delta=f"{twdeur['Diff (%)'][-1]}"+"%")
+    fin2.metric(label='Portfolio Value (USD)', value=portfolio_value_and_return[0])
+    fin3.metric(label='Portfolio Return (%)', value=portfolio_value_and_return[1])
+    fin4.metric(label='S&P 500', value=round(sp500['S&P 500'][-1], 2), delta=f"{sp500['Diff (%)'][-1]}"+"%")
+    fin5.metric(label='USD / EUR', value=usdeur['USDEUR'][-1], delta=f"{usdeur['Diff (%)'][-1]}"+"%")
+    fin6.metric(label='TWD / EUR', value=twdeur['TWDEUR'][-1], delta=f"{twdeur['Diff (%)'][-1]}"+"%")
 
 ## Charts
 def display_stock_chart_fin():
@@ -332,7 +363,7 @@ def macrofin_page_layout():
         )
         container = st.container(border=True)
         container.write(
-            "An interactive dashboard that allows you to track the asset prices, your investment portfolio, and some key indicators of financial markets."
+            "An interactive dashboard that allows you to track the asset prices, your investment portfolio, and some key indicators of financial markets. 📈🌎"
         )
         
         col1_contact, col2_contact = st.columns(2)
@@ -352,10 +383,6 @@ def macrofin_page_layout():
         st.subheader('Macroeconomics Indicators')
         display_commodities_chart_mac()
         display_chart_mac()
-    
-        
-    # for chart in charts:
-    #     st.plotly_chart(chart)
 
 ### Page Layout
 def main():
@@ -370,7 +397,3 @@ def main():
 ### Run the code
 if __name__ == '__main__':
     main()
-
-# @st.cache(persist=True) #We don't want to do this computation every time when the app is loading. It will only rerun the computation when the codes or input have changed.
-# def load_data():
-#     return 
