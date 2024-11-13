@@ -147,7 +147,7 @@ def get_stock_data():
             stock_ticker, start=start_date, end=end_date
         )["Adj Close"]
 
-    stocks_data = pd.concat(stocks_data, axis=1)
+    stocks_data = pd.concat(stocks_data.values(), axis=1)
     stocks_data.columns = stocks_data.keys()
     return stocks_data
 
@@ -175,6 +175,18 @@ def make_treasury_chart():
 def make_ccc_sp500_chart():
     sp500 = yf.download("^GSPC", start=start_date)["Adj Close"]
     ccc = get_ccc_data()
+
+    # Timezone aware
+    if sp500.index.tz is None:
+        sp500.index = sp500.index.tz_localize("UTC")
+    else:
+        sp500.index = sp500.index.tz_convert("UTC")
+
+    if ccc.index.tz is None:
+        ccc.index = ccc.index.tz_localize("UTC")
+    else:
+        ccc.index = ccc.index.tz_convert("UTC")
+
     ccc_sp500 = pd.concat([ccc, sp500], axis=1)
     ccc_sp500.columns = ["CCC-Rated Bond Yield Spread", "S&P 500"]
 
@@ -364,22 +376,32 @@ def display_main_figures_fin():
 def display_stock_chart_fin():
     stock_data = get_stock_data()
 
+    # Reset the index to make Date an explicit column
+    stock_data_reset = stock_data.reset_index()
+    stock_data_reset.rename(columns={"index": "Date"}, inplace=True)
+
+    # Layout with two columns: one for the chart, one for the data frame
     col1_stock, col2_stock = st.columns([3, 1])
+
     with col2_stock:
         # Select which stock prices to show
         selected_stock = st.selectbox(
             "Select the stock to display:", stock_data.columns
         )
 
+        # Display the most recent 8 days of data for the selected stock
         recent_stock_data = (
-            stock_data[[selected_stock]].sort_values("Date", ascending=False).head(8)
+            stock_data_reset[["Date", selected_stock]]
+            .sort_values(by="Date", ascending=False)
+            .head(8)
         )
         st.dataframe(recent_stock_data)
 
     with col1_stock:
+        # Create a line chart with plotly for the selected stock
         stock_fig = px.line(
-            stock_data,
-            x=stock_data.index,
+            stock_data_reset,
+            x="Date",
             y=selected_stock,
             title=f"{selected_stock} Stock Prices Over Time",
         )
