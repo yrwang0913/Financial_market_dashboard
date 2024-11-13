@@ -175,6 +175,18 @@ def make_treasury_chart():
 def make_ccc_sp500_chart():
     sp500 = yf.download("^GSPC", start=start_date)["Adj Close"]
     ccc = get_ccc_data()
+
+    # Timezone aware
+    if sp500.index.tz is None:
+        sp500.index = sp500.index.tz_localize("UTC")
+    else:
+        sp500.index = sp500.index.tz_convert("UTC")
+
+    if ccc.index.tz is None:
+        ccc.index = ccc.index.tz_localize("UTC")
+    else:
+        ccc.index = ccc.index.tz_convert("UTC")
+
     ccc_sp500 = pd.concat([ccc, sp500], axis=1)
     ccc_sp500.columns = ["CCC-Rated Bond Yield Spread", "S&P 500"]
 
