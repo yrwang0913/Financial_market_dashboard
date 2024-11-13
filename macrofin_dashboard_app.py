@@ -141,15 +141,34 @@ def get_stock_data():
     # Define the assets and the ticker you'd like to get HERE
     stocks = {"ASML": "ASML", "Maersk": "MAERSK-B.CO", "Airbnb": "ABNB"}
 
-    stocks_data = {}
-    for stock_name, stock_ticker in stocks.items():
-        stocks_data[stock_name] = yf.download(
-            stock_ticker, start=start_date, end=end_date
-        )["Adj Close"]
+    # Initialize an empty list to collect the stock data
+    stocks_data_list = []
 
-    stocks_data = pd.concat(stocks_data.values(), axis=1)
-    stocks_data.columns = stocks_data.keys()
-    return stocks_data
+    for stock_name, stock_ticker in stocks.items():
+        stock_data = yf.download(stock_ticker, start=start_date, end=end_date)
+
+        # Extract Adjusted Close prices, reset the index to make 'Date' a column
+        stock_data = stock_data[["Adj Close"]].reset_index()
+
+        # Rename the columns to ensure each has a unique stock name
+        stock_data.columns = ["Date", stock_name]
+
+        # Append to the list
+        stocks_data_list.append(stock_data)
+
+    # Concatenate all stock data frames along the columns (horizontally)
+    stocks_data_combined = stocks_data_list[0]  # Start with the first stock data
+
+    for stock_data in stocks_data_list[1:]:
+        stocks_data_combined = pd.merge(
+            stocks_data_combined, stock_data, on="Date", how="outer"
+        )
+
+    # Ensure the 'Date' column is converted to datetime and set it as the index
+    stocks_data_combined["Date"] = pd.to_datetime(stocks_data_combined["Date"])
+    stocks_data_combined.set_index("Date", inplace=True)
+
+    return stocks_data_combined
 
 
 ### Macro Page
@@ -395,6 +414,7 @@ def display_stock_chart_fin():
             .sort_values(by="Date", ascending=False)
             .head(8)
         )
+        recent_stock_data.reset_index(drop=True, inplace=True)
         st.dataframe(recent_stock_data)
 
     with col1_stock:
@@ -429,7 +449,7 @@ def display_crypto_chart_fin():
             y=selected_crypto,
             title=f"{selected_crypto} Prices Over Time",
         )
-        crypto_fig.update_traces(line=dict(color="yellow"))
+        crypto_fig.update_traces(line=dict(color="red"))
         st.plotly_chart(crypto_fig)
 
 
